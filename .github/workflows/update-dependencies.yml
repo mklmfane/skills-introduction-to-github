@@ -1,0 +1,68 @@
+# Learning workflow based on:
+# https://learn.microsoft.com/en-us/training/modules/introduction-to-github-actions/9-examine-release-test-action
+#
+# This workflow demonstrates scheduled dependency checks, testing, and PR creation.
+# Note: setup-node prepares the Node.js runtime; it does not update action versions by itself.
+
+name: Update Dependencies
+
+on:
+  schedule:
+    - cron: "0 2 * * 1" # Every Monday at 02:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-dependencies
+  cancel-in-progress: false
+
+jobs:
+  update-actions:
+    name: Check, test, and propose updates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Check configured action versions
+        shell: bash
+        run: |
+          echo "Configured GitHub Actions:"
+          grep -RhoE 'uses: [^[:space:]]+@[^[:space:]]+' .github/workflows             | sort -u || true
+
+      - name: Install dependencies
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        run: npm ci
+
+      - name: Test with new versions
+        if: ${{ hashFiles('package.json') != '' }}
+        run: npm test
+
+      - name: Explain skipped npm test
+        if: ${{ hashFiles('package.json') == '' }}
+        run: |
+          echo "::notice::No package.json was found, so npm test was skipped."
+          echo "Add a Node.js project and tests to activate the npm test step."
+
+      # A pull request is created only when an earlier step modifies tracked files.
+      - name: Create update PR
+        if: ${{ success() }}
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: automation/update-github-actions
+          delete-branch: true
+          commit-message: "chore: update GitHub Actions dependencies"
+          title: "chore: update GitHub Actions dependencies"
+          body: |
+            Automated dependency update generated after the scheduled checks
+            and available tests completed successfully.
