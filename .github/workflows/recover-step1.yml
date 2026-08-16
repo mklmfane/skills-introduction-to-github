@@ -1,0 +1,22 @@
+name: Recover Step 1
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  enable_step_1:
+    name: Enable Step 1
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Enable Step 1 workflow
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow enable "Step 1"
