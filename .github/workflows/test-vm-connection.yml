@@ -1,0 +1,38 @@
+name: Test Vagrant self-hosted runner
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runner-test:
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - vagrant
+      - virtualbox
+      - github-skills
+
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Verify runner
+        run: |
+          set -euo pipefail
+          hostname
+          uname -a
+          id
+          git --version
+
+      - name: Test GitHub connectivity
+        run: |
+          getent hosts github.com
+          curl --fail --silent --show-error https://api.github.com/zen
